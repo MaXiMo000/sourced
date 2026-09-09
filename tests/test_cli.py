@@ -60,6 +60,21 @@ class TestCli(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("1 grounded", buf.getvalue())
 
+    def test_missing_source_file_is_a_clean_error_not_a_traceback(self):
+        """Found by testing an actual typo'd path, the same way
+        providence's malformed-JSON crash was found: a missing file used
+        to raise FileNotFoundError straight out of main()."""
+        output = self._write("output.txt", "A claim.")
+        with self.assertRaises(SystemExit) as ctx:
+            main(["check", output, str(self.dir / "nope.txt")])
+        self.assertIn("no such file", str(ctx.exception))
+
+    def test_a_directory_given_instead_of_a_file_is_a_clean_error(self):
+        output = self._write("output.txt", "A claim.")
+        with self.assertRaises(SystemExit) as ctx:
+            main(["check", output, str(self.dir)])
+        self.assertIn("is a directory", str(ctx.exception))
+
     def test_json_flag_prints_the_full_report(self):
         output = self._write("output.txt", "Microsoft reported revenue of $56 billion.")
         source = self._write("source.txt", "Microsoft reported revenue of $56 billion.")

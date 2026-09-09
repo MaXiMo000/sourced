@@ -4,10 +4,27 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import sys
 
 from .check import check_output
 
 _TAG = {"grounded": "OK", "contradicted": "XX", "unverified": "??"}
+
+
+def _read(path: str) -> str:
+    """A missing file, a directory given by mistake, or binary/undecodable
+    content is a wrong argument, not a crash -- every sibling tool in this
+    portfolio treats a bad file path as an actionable error message, not a
+    traceback (found by testing this against an actual typo'd path, the
+    same way providence's malformed-JSON crash was found)."""
+    try:
+        return pathlib.Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        sys.exit(f"sourced: no such file: {path}")
+    except IsADirectoryError:
+        sys.exit(f"sourced: {path} is a directory, not a file")
+    except UnicodeDecodeError as exc:
+        sys.exit(f"sourced: {path} is not valid UTF-8 text ({exc})")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -22,9 +39,8 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
 
-    output_text = pathlib.Path(args.output_file).read_text(encoding="utf-8")
-    source_text = "\n".join(
-        pathlib.Path(f).read_text(encoding="utf-8") for f in args.source_files)
+    output_text = _read(args.output_file)
+    source_text = "\n".join(_read(f) for f in args.source_files)
     report = check_output(output_text, source_text)
 
     if args.json:
