@@ -1,0 +1,40 @@
+[project]
+# "sourced" was already taken on PyPI, same story as receipt/providence/
+# custody before it (checked, not assumed). The installed command stays
+# the short name -- python-dateutil installs `dateutil`, this installs
+# `sourced`.
+name = "sourced-evidence"
+version = "0.1.0"
+description = "Per-claim grounded/contradicted/unverified checking of LLM output against its own source context -- never a blended trust score."
+requires-python = ">=3.10"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["verification", "grounding", "llm", "rag", "evidence", "provenance"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Testing",
+]
+# Stdlib only -- see README's "What this doesn't do": this is a lexical
+# overlap checker, not a semantic one, on purpose, and needs no LLM API of
+# its own to run.
+dependencies = []
+
+urls.Homepage = "https://github.com/MaXiMo000/sourced"
+urls.Source = "https://github.com/MaXiMo000/sourced"
+urls.Issues = "https://github.com/MaXiMo000/sourced/issues"
+urls.Changelog = "https://github.com/MaXiMo000/sourced/releases"
+
+[project.scripts]
+sourced = "sourced.cli:main"
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["sourced*"]
