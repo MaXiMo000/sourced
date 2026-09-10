@@ -21,7 +21,19 @@ import re
 # enough. It will over-split or under-split on abbreviations ("Dr. Smith
 # arrived.") and decimal numbers at a sentence boundary -- a stated
 # limitation, not a silent one; see README.
-_SENTENCE_END = re.compile(r'(?<=[.!?])\s+(?=[A-Z0-9"\'])')
+#
+# The lookbehind has two alternatives, not one optional closing-quote/paren
+# character, because Python's re requires a fixed-width lookbehind: a
+# quantifier inside (?<=...) is a SyntaxError. Both alternatives here are
+# individually fixed-width (1 char, then 2 chars) -- the quantifier just
+# isn't inside the lookbehind itself.
+#
+# The second alternative is the fix for a real bug: American-style closing
+# punctuation puts the period *inside* the quote ("four hours." not "four
+# hours".), so the character immediately before the split point is the
+# quote mark, not [.!?] -- the single-alternative version never matched
+# there at all, silently merging two sentences into one claim.
+_SENTENCE_END = re.compile(r'(?:(?<=[.!?])|(?<=[.!?][\'")\]]))\s+(?=[A-Z0-9"\'])')
 
 
 def split_claims(text: str) -> list[str]:

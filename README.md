@@ -116,12 +116,17 @@ python tests/test_check.py      # the grounded/contradicted/unverified decision
 python tests/test_cli.py        # the real CLI entry point, real files, real argv
 ```
 
-36 tests. Several exist specifically because a first pass got something
+41 tests. Several exist specifically because a first pass got something
 wrong and testing against ordinary prose (not synthetic numbers-only
 input) caught it -- e.g. a number regex that swallowed a following
-sentence period (`"42."` parsed as the number `42.`), and a sentence-
+sentence period (`"42."` parsed as the number `42.`), a sentence-
 initial entity ("Microsoft" opening a sentence) needing case-insensitive
 matching against a source that uses the same word lowercase mid-sentence,
-without that leniency being used for anything else.
+without that leniency being used for anything else, and (found live
+during a later audit) American-style closing punctuation putting the
+period *inside* a quote (`"four hours."` not `"four hours".`) silently
+merging two sentences into one claim -- the sentence-end regex only ever
+checked for `[.!?]` immediately before the split point, never a quote
+mark sitting in front of it.
 
 MIT licensed.

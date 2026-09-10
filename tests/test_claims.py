@@ -44,6 +44,35 @@ class TestSplitClaims(unittest.TestCase):
         text = "Dr. Smith signed the report."
         self.assertEqual(len(split_claims(text)), 2)
 
+    def test_a_period_inside_a_closing_quote_still_splits(self):
+        """Real bug, found live: American-style punctuation puts the period
+        *inside* the quote ("four hours." not "four hours".), so the
+        character right before the split point is the quote mark, not
+        [.!?] -- the original lookbehind only ever checked for [.!?]
+        directly, so this silently merged two claims into one."""
+        text = 'The report said the outage lasted "four hours." The team resolved it by noon.'
+        self.assertEqual(split_claims(text), [
+            'The report said the outage lasted "four hours."',
+            "The team resolved it by noon.",
+        ])
+
+    def test_a_period_outside_a_closing_quote_still_splits(self):
+        """The other quoting convention already worked (the period itself
+        sits right before the space) -- pinned so a future regex change
+        can't fix one convention by breaking the other."""
+        text = 'The report said the outage lasted "four hours". The team resolved it by noon.'
+        self.assertEqual(split_claims(text), [
+            'The report said the outage lasted "four hours".',
+            "The team resolved it by noon.",
+        ])
+
+    def test_a_period_inside_a_closing_paren_still_splits(self):
+        text = "She said it works (allegedly.) Then it broke."
+        self.assertEqual(split_claims(text), [
+            "She said it works (allegedly.)",
+            "Then it broke.",
+        ])
+
 
 if __name__ == "__main__":
     unittest.main()
