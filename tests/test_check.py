@@ -61,6 +61,17 @@ class TestCheckClaim(unittest.TestCase):
         self.assertNotEqual(r["status"], GROUNDED)
         self.assertEqual(r["status"], CONTRADICTED)
 
+    def test_a_sentence_initial_word_alone_never_grounds_a_claim(self):
+        # Regression: "Operating" (capitalized only because it starts the
+        # sentence) was found in the source, so a claim flipping "fell" to
+        # "rose" came back grounded.
+        source = "Operating costs fell sharply after the restructuring."
+        r = check_claim("Operating costs rose after the restructuring.", source)
+        self.assertEqual(r["status"], UNVERIFIED)
+        self.assertIn("first word", r["detail"])
+        # A real name mid-sentence is still a real anchor.
+        self.assertEqual(check_claim("Costs at Acme fell.", "Costs at Acme fell sharply.")["status"], GROUNDED)
+
     def test_quoted_phrase_present_verbatim_is_grounded(self):
         source = 'The CEO said "we exceeded every target this year."'
         r = check_claim('The CEO said "we exceeded every target this year."', source)

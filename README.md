@@ -66,7 +66,10 @@ legitimate "can't tell," not a failure.
    `8%` = `8 percent`, and `5` is never "found" inside a source's `56`.
 3. **Classify against the source** (`sourced/check.py`):
    - **`grounded`** -- every number, quote, and entity in the claim appears
-     in the source.
+     in the source, and at least one of them is a real anchor: a number, a
+     quote, or a name. A claim whose only match is its own capitalized
+     first word ("Operating costs rose...") stays `unverified` -- finding
+     "operating" in the source says nothing about whether costs rose.
    - **`contradicted`** -- a claim's number doesn't appear in the source at
      all, but an entity from the *same claim* does, near a *different*
      number. Narrow on purpose: this only fires when there's a real shared
@@ -75,18 +78,50 @@ legitimate "can't tell," not a failure.
    - **`unverified`** -- everything else: no checkable signals in the claim
      at all, or some signal simply isn't found anywhere in the source.
 
+## `--judge`: let Claude decide what string matching can't
+
+```
+pip install 'sourced-evidence[judge]'
+sourced check output.txt source.txt --judge
+```
+
+String matching can't see paraphrase ("costs went down a lot" vs
+"operating costs fell sharply") or a flipped verb, so those claims come
+back `unverified`. `--judge` sends **only those claims** -- never ones
+already decided -- to Claude (`claude-opus-5` by default, `--judge-model`
+to change it) with the source, and applies its grounded / contradicted
+verdicts.
+
+The judge is held to the same standard as the rest of the tool: every
+verdict must quote its evidence **verbatim from the source**, and sourced
+checks that quote is really there. A verdict backed by a quote that isn't
+in the source is discarded and the claim stays `unverified` -- the model
+can't talk a claim into `grounded`. Its reasons show up in the report:
+
+```
+[OK] Costs went down a lot after the reorganization.
+[XX] Operating costs rose after the restructuring.
+       judged contradicted by claude-opus-5: the source says "Operating costs fell sharply"
+```
+
+(Shape of the output, not a recorded run.) One request per check: the
+source goes in a cached system prompt, so re-checking against the same
+source -- the usual CI loop -- reads it at cache prices. A safety refusal
+is re-run server-side on Anthropic's recommended fallback model
+(`fallbacks: "default"`); if the chain still refuses, the claims stay
+`unverified` and the report says so. Credentials are whatever the
+anthropic SDK finds (`ANTHROPIC_API_KEY`, or `ant auth login`). Without
+`--judge`, sourced never makes a network call.
+
 ## What this does NOT do
 
 This is the part worth reading before trusting a result.
 
-- **No semantic understanding, no paraphrase matching.** "Revenue was $56
+- **No semantic understanding, without `--judge`.** "Revenue was $56
   billion" and "the company made fifty-six billion dollars" are the same
-  fact and this will not see it that way -- it matches strings and
-  numbers, not meaning. A real semantic entailment checker needs a
-  language model; that's real future work (an optional LLM-backed
-  adjudication pass, the same shape `invariant`'s cascade or LabLedger's
-  Gemini stage already use elsewhere in this portfolio -- degrade
-  gracefully without it, don't require it), not built here.
+  fact, and the string pass will not see it that way -- it matches strings
+  and numbers, not meaning. `--judge` (above) is the optional
+  meaning-level pass; nothing requires it.
 - **No real named-entity recognition.** `signals.proper_nouns()` is a
   capitalization heuristic, not a trained model. "Bank of America" splits
   into `Bank` and `America` because a lowercase joiner breaks the
@@ -116,9 +151,10 @@ python tests/test_claims.py     # sentence splitting
 python tests/test_signals.py    # number/quote/entity extraction
 python tests/test_check.py      # the grounded/contradicted/unverified decision
 python tests/test_cli.py        # the real CLI entry point, real files, real argv
+python tests/test_judge.py      # --judge, against a stand-in client (no network)
 ```
 
-41 tests. Several exist specifically because a first pass got something
+Several tests exist specifically because a first pass got something
 wrong and testing against ordinary prose (not synthetic numbers-only
 input) caught it -- e.g. a number regex that swallowed a following
 sentence period (`"42."` parsed as the number `42.`), a sentence-
