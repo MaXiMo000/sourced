@@ -16,7 +16,8 @@ def _window(text: str, index: int, radius: int = 60) -> str:
 
 
 def check_claim(claim: str, source: str) -> dict:
-    nums = signals.numbers(claim)
+    claim_nums = signals.numbers_with_text(claim)
+    nums = [canon for canon, _ in claim_nums]
     ents = signals.proper_nouns(claim)
     quoted = signals.quotes(claim)
 
@@ -33,17 +34,19 @@ def check_claim(claim: str, source: str) -> dict:
     # there's a real anchor (a shared entity) pinning the comparison to the
     # same subject, not "any two different numbers exist somewhere in a
     # long document," which would be a false-contradiction machine.
+    source_nums = set(signals.numbers(source))
     contradictions = []
     for ent in ents:
         idx = source.find(ent)
         if idx == -1:
             continue
-        nearby_nums = signals.numbers(_window(source, idx))
-        for n in nums:
-            if n not in source and nearby_nums and n not in nearby_nums:
+        nearby = signals.numbers_with_text(_window(source, idx))
+        nearby_nums = {canon for canon, _ in nearby}
+        for n, n_text in claim_nums:
+            if n not in source_nums and nearby_nums and n not in nearby_nums:
                 contradictions.append({
-                    "claim_number": n, "entity": ent,
-                    "source_numbers_nearby": nearby_nums,
+                    "claim_number": n_text, "entity": ent,
+                    "source_numbers_nearby": [text for _, text in nearby],
                 })
 
     if contradictions:
@@ -57,7 +60,7 @@ def check_claim(claim: str, source: str) -> dict:
             "contradictions": contradictions,
         }
 
-    missing_numbers = [n for n in nums if n not in source]
+    missing_numbers = [n for n in nums if n not in source_nums]
     # Case-insensitive here, unlike the contradiction anchor above: a
     # sentence-initial entity like "Revenue" is only capitalized because of
     # its position, and the same word appears lowercase mid-sentence in

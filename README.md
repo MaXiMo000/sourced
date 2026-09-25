@@ -17,7 +17,7 @@ $ sourced check output.txt source.txt
 [OK] Microsoft reported revenue of $56 billion.
 [XX] Microsoft grew 40% year over year.
        claims 40% near 'Microsoft', but the source's own text near that
-       entity says ['56', '8%']
+       entity says ['56 billion', '8%']
 [??] The outlook remains uncertain.
        no checkable numbers, quoted text, or capitalized entities in this claim
 
@@ -61,7 +61,9 @@ legitimate "can't tell," not a failure.
    a hedge (`sourced/claims.py`).
 2. **Extract signals.** Numbers, quoted substrings, and capitalized
    entity-shaped phrases (`sourced/signals.py`) -- the concrete, matchable
-   facts a source text either does or doesn't contain.
+   facts a source text either does or doesn't contain. Numbers are compared
+   by value, not as text: `1,000` = `1000`, `$56 billion` = `56B` = `56bn`,
+   `8%` = `8 percent`, and `5` is never "found" inside a source's `56`.
 3. **Classify against the source** (`sourced/check.py`):
    - **`grounded`** -- every number, quote, and entity in the claim appears
      in the source.

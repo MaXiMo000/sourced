@@ -7,22 +7,30 @@ without needing to understand what the sentence means.
 from __future__ import annotations
 
 import re
+from decimal import Decimal
 
-# The fractional part requires a digit after the dot, not just an optional
-# dot -- `\.?\d*` alone would swallow a following sentence period into the
-# match ("42." at the end of a sentence reading as the number "42." instead
-# of "42"), a real bug caught by testing this against ordinary prose, not
-# synthetic numbers-only input.
-_NUMBER = re.compile(r'-?\d[\d,]*(?:\.\d+)?%?')
+# A number is an integer with optional comma-grouped thousands, an optional
+# fraction (a digit is required after the dot, so a sentence-ending "42."
+# stays "42"), then an optional percent or scale suffix. The lookbehind
+# keeps it from starting mid-token ("v2", "Q3" and "1.5.2" aren't amounts).
+#
+# Every number is reduced to one canonical value, so "1,000" and "1000",
+# "$56 billion" and "56B", "8%" and "8 percent" compare equal, and matching
+# is by value, never by substring -- "5" must not count as found in a
+# source that only says "56".
+_NUMBER = re.compile(
+    r'(?<![\w.])(-?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)'
+    r'(?:\s*(%|percent\b|per cent\b)'
+    r'|\s+(thousand|million|billion|trillion)\b'
+    r'|(bn|[KMB])\b)?'
+)
+_SCALE = {"thousand": 3, "k": 3, "million": 6, "m": 6,
+          "billion": 9, "bn": 9, "b": 9, "trillion": 12}
 _QUOTED = re.compile(r'"([^"]{3,})"|\'([^\']{3,})\'')
-# A run of 1+ capitalized words -- a cheap proper-noun/entity proxy, not real
-# named-entity recognition. Multi-word runs ("Bank of America" -- capitalized
-# words joined by lowercase function words still read as one run since the
-# regex only requires the *first* letter of each word to be uppercase and
-# skips over up to one lowercase joiner... actually it doesn't: this simple
-# version only chains directly-adjacent capitalized words. "Bank of America"
-# would be seen as two separate entities, "Bank" and "America" -- a real,
-# stated limitation of not doing real NER, not a bug to silently paper over.
+# A run of 1+ directly-adjacent capitalized words -- a cheap proper-noun
+# proxy, not real named-entity recognition. A lowercase joiner breaks the
+# run, so "Bank of America" comes out as "Bank" and "America": a stated
+# limitation of not doing real NER.
 _PROPER_NOUN = re.compile(r'\b[A-Z][a-zA-Z0-9]*(?:\s+[A-Z][a-zA-Z0-9]*)*\b')
 
 # Common capitalized function words that are never an entity on their own
@@ -37,7 +45,26 @@ _STOPWORD_CAPS = {
 
 
 def numbers(text: str) -> list[str]:
-    return [m.group().replace(",", "") for m in _NUMBER.finditer(text)]
+    """Every number in `text`, as a canonical string: "1,200,000" ->
+    "1200000", "$56 billion" -> "56000000000", "8 percent" -> "8%"."""
+    return [canon for canon, _ in numbers_with_text(text)]
+
+
+def numbers_with_text(text: str) -> list[tuple[str, str]]:
+    """(canonical, as written) for every number -- canonical to compare,
+    as-written to show a person ("56 billion", not "56000000000")."""
+    found = []
+    for m in _NUMBER.finditer(text):
+        value = Decimal(m.group(1).replace(",", ""))
+        percent, word_scale, suffix_scale = m.group(2), m.group(3), m.group(4)
+        scale = (word_scale or suffix_scale or "").lower()
+        if scale:
+            value = value.scaleb(_SCALE[scale])
+        # normalize() drops trailing zeros ("12.50" == "12.5"); format "f"
+        # keeps it out of exponent notation ("5.6E+10").
+        canon = format(value.normalize(), "f")
+        found.append((canon + "%" if percent else canon, m.group().strip()))
+    return found
 
 
 def quotes(text: str) -> list[str]:

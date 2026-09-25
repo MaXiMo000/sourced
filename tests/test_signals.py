@@ -23,6 +23,27 @@ class TestNumbers(unittest.TestCase):
     def test_negative_number(self):
         self.assertEqual(signals.numbers("Margin fell -3.2%."), ["-3.2%"])
 
+    def test_scale_words_and_suffixes_reduce_to_the_same_value(self):
+        self.assertEqual(signals.numbers("$56 billion"), ["56000000000"])
+        self.assertEqual(signals.numbers("56B"), ["56000000000"])
+        self.assertEqual(signals.numbers("56bn"), ["56000000000"])
+        self.assertEqual(signals.numbers("56,000 million"), ["56000000000"])
+        self.assertEqual(signals.numbers("2.5K"), ["2500"])
+
+    def test_percent_word_equals_percent_sign(self):
+        self.assertEqual(signals.numbers("up 8 percent"), ["8%"])
+        self.assertEqual(signals.numbers("up 8%"), ["8%"])
+
+    def test_trailing_zeros_do_not_change_the_value(self):
+        self.assertEqual(signals.numbers("12.50"), signals.numbers("12.5"))
+
+    def test_digits_inside_identifiers_are_not_amounts(self):
+        self.assertEqual(signals.numbers("Q3 results for v2 of GPT4"), [])
+
+    def test_as_written_text_is_kept_for_display(self):
+        self.assertEqual(signals.numbers_with_text("Revenue hit 56 billion."),
+                         [("56000000000", "56 billion")])
+
     def test_no_numbers(self):
         self.assertEqual(signals.numbers("Revenue grew nicely."), [])
 

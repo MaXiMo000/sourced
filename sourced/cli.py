@@ -17,8 +17,14 @@ def _read(path: str) -> str:
     portfolio treats a bad file path as an actionable error message, not a
     traceback (found by testing this against an actual typo'd path, the
     same way providence's malformed-JSON crash was found)."""
+    p = pathlib.Path(path)
+    # Checked up front: on Windows, reading a directory raises
+    # PermissionError, not IsADirectoryError, so the except below never
+    # saw it and the user got a traceback.
+    if p.is_dir():
+        sys.exit(f"sourced: {path} is a directory, not a file")
     try:
-        return pathlib.Path(path).read_text(encoding="utf-8")
+        return p.read_text(encoding="utf-8")
     except FileNotFoundError:
         sys.exit(f"sourced: no such file: {path}")
     except IsADirectoryError:
