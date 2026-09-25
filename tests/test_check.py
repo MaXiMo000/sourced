@@ -39,12 +39,27 @@ class TestCheckClaim(unittest.TestCase):
         r = check_claim("Microsoft reported revenue of $70 billion.", source)
         self.assertEqual(r["status"], CONTRADICTED)
         self.assertEqual(r["contradictions"][0]["entity"], "Microsoft")
-        self.assertIn("56", r["contradictions"][0]["source_numbers_nearby"])
+        self.assertIn("56 billion", r["contradictions"][0]["source_numbers_nearby"])
 
     def test_entity_present_with_the_same_number_is_grounded_not_contradicted(self):
         source = "Microsoft reported revenue of $56 billion for the quarter."
         r = check_claim("Microsoft reported revenue of $56 billion.", source)
         self.assertEqual(r["status"], GROUNDED)
+
+    def test_same_number_written_differently_is_grounded(self):
+        # Regression: the claim's "1,000" was normalized to "1000" and then
+        # searched for as a substring of a source that says "1,000".
+        source = "Acme sold 1,000 units and reported $56 billion in revenue."
+        self.assertEqual(check_claim("Acme sold 1,000 units.", source)["status"], GROUNDED)
+        self.assertEqual(check_claim("Acme sold 1000 units.", source)["status"], GROUNDED)
+        self.assertEqual(check_claim("Acme reported 56B in revenue.", source)["status"], GROUNDED)
+
+    def test_a_number_is_never_found_as_a_substring_of_a_bigger_one(self):
+        # Regression: "5" counted as present because the source says "56".
+        source = "Acme hired 56 engineers this year."
+        r = check_claim("Acme hired 5 engineers.", source)
+        self.assertNotEqual(r["status"], GROUNDED)
+        self.assertEqual(r["status"], CONTRADICTED)
 
     def test_quoted_phrase_present_verbatim_is_grounded(self):
         source = 'The CEO said "we exceeded every target this year."'
