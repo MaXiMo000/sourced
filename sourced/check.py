@@ -75,6 +75,20 @@ def check_claim(claim: str, source: str) -> dict:
     total = len(nums) + len(ents) + len(quoted)
     missing = len(missing_numbers) + len(missing_entities) + len(missing_quotes)
 
+    # A single capitalized word that only starts the sentence ("Operating
+    # costs rose...") is a pseudo-entity: finding it in the source says
+    # nothing about the claim. Without a number, a quote, or a real name,
+    # a match can't ground anything -- it read "costs rose" as grounded in
+    # a source that says costs fell.
+    first_word = claim.lstrip().split(" ", 1)[0].strip('"\'(')
+    strong = bool(nums or quoted or any(" " in e or e != first_word for e in ents))
+    if missing == 0 and not strong:
+        return {
+            "claim": claim, "status": UNVERIFIED,
+            "detail": ("only the sentence's first word matched the source -- no number, quote "
+                       "or name to check the claim itself against"),
+            "signals": {"numbers": nums, "entities": ents, "quotes": quoted},
+        }
     if missing == 0:
         return {
             "claim": claim, "status": GROUNDED,

@@ -7,6 +7,7 @@ import pathlib
 import sys
 
 from .check import check_output
+from .judge import DEFAULT_MODEL, JudgeUnavailable, judge
 
 _TAG = {"grounded": "OK", "contradicted": "XX", "unverified": "??"}
 
@@ -42,12 +43,22 @@ def main(argv: list[str] | None = None) -> int:
     check_p.add_argument("output_file", help="the LLM's output, one claim per sentence")
     check_p.add_argument("source_files", nargs="+", help="the context it should be grounded in")
     check_p.add_argument("--json", action="store_true", help="print the full report as JSON")
+    check_p.add_argument("--judge", action="store_true",
+                         help="ask Claude to decide the claims string matching left unverified "
+                              "(needs: pip install 'sourced-evidence[judge]')")
+    check_p.add_argument("--judge-model", default=DEFAULT_MODEL,
+                         help=f"the model for --judge (default: {DEFAULT_MODEL})")
 
     args = parser.parse_args(argv)
 
     output_text = _read(args.output_file)
     source_text = "\n".join(_read(f) for f in args.source_files)
     report = check_output(output_text, source_text)
+    if args.judge:
+        try:
+            judge(report, source_text, model=args.judge_model)
+        except JudgeUnavailable as exc:
+            sys.exit(f"sourced: {exc}")
 
     if args.json:
         print(json.dumps(report, indent=2))

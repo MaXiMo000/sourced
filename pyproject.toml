@@ -4,7 +4,7 @@
 # the short name -- python-dateutil installs `dateutil`, this installs
 # `sourced`.
 name = "sourced-evidence"
-version = "0.1.1"
+version = "0.2.0"
 description = "Per-claim grounded/contradicted/unverified checking of LLM output against its own source context -- never a blended trust score."
 requires-python = ">=3.10"
 readme = "README.md"
@@ -19,15 +19,17 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Topic :: Software Development :: Testing",
 ]
-# Stdlib only -- see README's "What this doesn't do": this is a lexical
-# overlap checker, not a semantic one, on purpose, and needs no LLM API of
-# its own to run.
+# Stdlib only. The optional `judge` extra (below) adds the anthropic SDK
+# for --judge; without it, sourced is the deterministic lexical checker.
 dependencies = []
 
 urls.Homepage = "https://github.com/MaXiMo000/sourced"
 urls.Source = "https://github.com/MaXiMo000/sourced"
 urls.Issues = "https://github.com/MaXiMo000/sourced/issues"
 urls.Changelog = "https://github.com/MaXiMo000/sourced/releases"
+
+[project.optional-dependencies]
+judge = ["anthropic>=1.8"]
 
 [project.scripts]
 sourced = "sourced.cli:main"
