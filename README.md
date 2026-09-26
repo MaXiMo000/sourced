@@ -65,18 +65,34 @@ legitimate "can't tell," not a failure.
    by value, not as text: `1,000` = `1000`, `$56 billion` = `56B` = `56bn`,
    `8%` = `8 percent`, and `5` is never "found" inside a source's `56`.
 3. **Classify against the source** (`sourced/check.py`):
-   - **`grounded`** -- every number, quote, and entity in the claim appears
-     in the source, and at least one of them is a real anchor: a number, a
-     quote, or a name. A claim whose only match is its own capitalized
-     first word ("Operating costs rose...") stays `unverified` -- finding
-     "operating" in the source says nothing about whether costs rose.
-   - **`contradicted`** -- a claim's number doesn't appear in the source at
-     all, but an entity from the *same claim* does, near a *different*
-     number. Narrow on purpose: this only fires when there's a real shared
-     anchor pinning the comparison to the same subject, never "two
-     different numbers exist somewhere in a long document."
-   - **`unverified`** -- everything else: no checkable signals in the claim
-     at all, or some signal simply isn't found anywhere in the source.
+   - **`grounded`** -- every number, quote and name in the claim appears
+     **in one passage** of the source (three consecutive sentences),
+     together with at least 60% of the claim's own content words, and the
+     source's closest sentence is not negated where the claim isn't (or
+     the other way round). At least one signal must be a real anchor: a
+     claim whose only match is its capitalized first word ("Operating
+     costs rose...") stays `unverified`.
+   - **`contradicted`** -- a passage about the same thing (every name in
+     the claim, most of its words) states a different number, and not the
+     claim's. The report shows the numbers that passage gives near those
+     names.
+   - **`unverified`** -- everything else, with the reason: which signals
+     never appear together, a negation mismatch, or names that co-occur
+     while most of what the claim says about them doesn't.
+
+**Why local.** The first version grounded a claim when each signal
+appeared *anywhere* in the source. Checked against the 73 KB Wikipedia
+article on PostgreSQL, it called three false sentences grounded:
+
+```
+Stonebraker returned to Berkeley in 1991 ...   (the source: 1985; 1991 is elsewhere)
+POSTGRES reused most of the Ingres code.        (the source: "but not its code")
+Berkeley released POSTGRES under a GPL license. (the source: an MIT License variant)
+```
+
+Now: the first is `contradicted` (the passage says 1982 and 1985), the
+other two `unverified`, and the three true sentences in the same summary
+stay `grounded`.
 
 ## `--judge`: let Claude decide what string matching can't
 
