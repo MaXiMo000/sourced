@@ -90,6 +90,45 @@ class TestCheckClaim(unittest.TestCase):
         self.assertIn("Microsoft", r["detail"])
 
 
+class TestEvidenceIsLocal(unittest.TestCase):
+    """Three false sentences about the Wikipedia article on PostgreSQL all
+    came back grounded, because each signal appeared *somewhere* in 73 KB."""
+
+    SOURCE = (
+        "In 1982, the leader of the Ingres team, Michael Stonebraker, left Berkeley. "
+        "He returned to Berkeley in 1985 and began a post-Ingres project called POSTGRES. "
+        "POSTGRES used many of the ideas of Ingres, but not its code. "
+        "Berkeley released POSTGRES under an MIT License variant. "
+        + "Filler sentence about unrelated history. " * 5
+        + "In 1991 the team shipped version 3. Other databases use the GPL."
+    )
+
+    def test_a_number_elsewhere_in_the_document_does_not_ground_it(self):
+        r = check_claim("Stonebraker returned to Berkeley in 1991 and started the POSTGRES project.",
+                        self.SOURCE)
+        self.assertEqual(r["status"], CONTRADICTED)
+        self.assertIn("1985", r["contradictions"][0]["source_numbers_nearby"])
+
+    def test_names_together_are_not_what_the_claim_says_about_them(self):
+        r = check_claim("POSTGRES reused most of the Ingres code.", self.SOURCE)
+        self.assertEqual(r["status"], UNVERIFIED)
+
+    def test_a_name_from_another_passage_does_not_ground_it(self):
+        r = check_claim("Berkeley released POSTGRES under a GPL license.", self.SOURCE)
+        self.assertEqual(r["status"], UNVERIFIED)
+        self.assertIn("GPL", r["detail"])
+
+    def test_a_negation_on_one_side_only_blocks_grounded(self):
+        r = check_claim("POSTGRES used the code of Ingres.", "POSTGRES did not use the code of Ingres.")
+        self.assertEqual(r["status"], UNVERIFIED)
+        self.assertIn("negated", r["detail"])
+
+    def test_the_true_sentences_stay_grounded(self):
+        for claim in ("He returned to Berkeley in 1985.",
+                      "Berkeley released POSTGRES under an MIT License variant."):
+            self.assertEqual(check_claim(claim, self.SOURCE)["status"], GROUNDED, claim)
+
+
 class TestCheckOutput(unittest.TestCase):
     def test_multiple_claims_are_each_checked_independently(self):
         source = "Microsoft reported revenue of $56 billion. Apple grew 8%."
