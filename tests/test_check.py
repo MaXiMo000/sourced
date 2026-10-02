@@ -129,6 +129,41 @@ class TestEvidenceIsLocal(unittest.TestCase):
             self.assertEqual(check_claim(claim, self.SOURCE)["status"], GROUNDED, claim)
 
 
+class TestRealOutputShapes(unittest.TestCase):
+    """False contradictions found by bench/ragtruth.py, in real model output."""
+
+    def test_a_preamble_line_is_its_own_claim(self):
+        out = "Here's the summary within 66 words:\n\nCanadian jets struck ISIS near Raqqa in 2015."
+        claims = [c["claim"] for c in check_output(out, "Canadian jets struck ISIS near Raqqa in 2015.")["claims"]]
+        self.assertEqual(claims, ["Here's the summary within 66 words:",
+                                  "Canadian jets struck ISIS near Raqqa in 2015."])
+
+    def test_list_numbers_and_passage_citations_are_not_facts(self):
+        src = "Passage 2: Rinse the ring with cool water and dry it."
+        for claim in ("1. Rinse the ring with cool water and dry it.",
+                      "Rinse the ring with cool water and dry it. (Passage 1)"):
+            self.assertNotEqual(check_claim(claim, src)["status"], CONTRADICTED, claim)
+
+    def test_a_common_first_word_is_not_an_anchor(self):
+        # "To" appears lowercase in the source: a word, not a name.
+        src = ("Bring the ribs to room temperature. "
+               "To prepare the ribs, rub them with 2 tablespoons of salt and rest them 5 hours.")
+        self.assertNotEqual(check_claim("To prepare the ribs, rest them 9 hours.", src)["status"],
+                            CONTRADICTED)
+
+    def test_lowercase_scale_suffix(self):
+        src = "The California Public Utilities Commission fined Pacific Gas $1.6 billion."
+        self.assertEqual(check_claim("The California Public Utilities Commission fined Pacific Gas $1.6b.",
+                                     src)["status"], GROUNDED)
+
+    def test_a_number_stated_in_another_passage_about_the_subject(self):
+        src = ("Cristina Husbands, 48, pleaded guilty in March. The judge spoke at length. "
+               "Officials said nothing more. Reporters waited outside. Nobody commented. "
+               "Cristina Husbands was sentenced to 64 months in prison.")
+        self.assertNotEqual(check_claim("Cristina Husbands, 48, was sentenced to 64 months.", src)["status"],
+                            CONTRADICTED)
+
+
 class TestCheckOutput(unittest.TestCase):
     def test_multiple_claims_are_each_checked_independently(self):
         source = "Microsoft reported revenue of $56 billion. Apple grew 8%."

@@ -22,10 +22,14 @@ _NUMBER = re.compile(
     r'(?<![\w.])(-?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)'
     r'(?:\s*(%|percent\b|per cent\b)'
     r'|\s+(thousand|million|billion|trillion)\b'
-    r'|(bn|[KMB])\b)?'
+    r'|(bn|[KMBkb])\b)?'
 )
 _SCALE = {"thousand": 3, "k": 3, "million": 6, "m": 6,
           "billion": 9, "bn": 9, "b": 9, "trillion": 12}
+_NOT_A_FACT = re.compile(
+    r"(?m)^\s*\d{1,3}[.)](?=\s|$)"                                  # list numbering
+    r"|\(?\b(?:passage|source|document|doc)\s*\d+\)?",            # citation markers
+    re.I)
 _QUOTED = re.compile(r'"([^"]{3,})"|\'([^\']{3,})\'')
 # A run of 1+ directly-adjacent capitalized words -- a cheap proper-noun
 # proxy, not real named-entity recognition. A lowercase joiner breaks the
@@ -54,6 +58,10 @@ def numbers_with_text(text: str) -> list[tuple[str, str]]:
     """(canonical, as written) for every number -- canonical to compare,
     as-written to show a person ("56 billion", not "56000000000")."""
     found = []
+    # Formatting, not facts: list numbering ("1.", "9)") at the start of a
+    # line, and citation markers ("(Passage 1)", "passage 2"), blanked out
+    # before numbers are read.
+    text = _NOT_A_FACT.sub(lambda m: " " * len(m.group()), text)
     for m in _NUMBER.finditer(text):
         value = Decimal(m.group(1).replace(",", ""))
         percent, word_scale, suffix_scale = m.group(2), m.group(3), m.group(4)

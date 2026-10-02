@@ -40,5 +40,9 @@ def split_claims(text: str) -> list[str]:
     text = text.strip()
     if not text:
         return []
-    parts = _SENTENCE_END.split(text)
+    # Line breaks end a claim too. LLM output puts a preamble on its own
+    # line ("Here's the summary within 66 words:") and numbers list items;
+    # RAGTruth showed "66" being checked as a fact about Canadian airstrikes
+    # because the preamble and the first sentence were read as one claim.
+    parts = [part for line in text.splitlines() for part in _SENTENCE_END.split(line)]
     return [p.strip() for p in parts if p.strip()]
