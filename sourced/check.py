@@ -124,10 +124,24 @@ def check_claim(claim: str, source: str) -> dict:
     # claim, most of its words -- states a different number, and not the
     # claim's. Needs a real anchor (at least one name), so two unrelated
     # numbers in a long document never make a contradiction.
-    if ents and nums:
+    # A contradiction needs a real anchor. A capitalized first word is only a
+    # name if the source never uses it in lowercase: "Microsoft" stays an
+    # anchor, while "To", "Rinse", "According" -- which anchored most of the
+    # false contradictions RAGTruth turned up -- do not.
+    first = claim.lstrip().split(" ", 1)[0].strip("\"'(")
+    anchors = [e for e in ents if " " in e or e != first
+               or not re.search(rf"\b{re.escape(e.lower())}\b", source)]
+    if anchors and nums:
+        # A number the source states in *any* passage that mentions the same
+        # subject is not contradicted -- only not in the best-matching one
+        # (RAGTruth: "Husbands, 48, ... 64 months": 48 in one passage, 64 in
+        # the next).
+        stated = {n for c in candidates for n in c["p_nums"]
+                  if any(a.lower() in c["text"].lower() for a in anchors)}
         about = [c for c in candidates
                  if not c["missing_ents"] and c["missing_nums"] and c["p_nums"]
-                 and c["cover"] >= CONTENT_MIN]
+                 and c["cover"] >= CONTENT_MIN
+                 and not set(c["missing_nums"]) <= stated]
         if about:
             c = max(about, key=lambda c: c["cover"])
             # What the passage says near the names, minus citation markers

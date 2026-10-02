@@ -4,7 +4,7 @@
 # the short name -- python-dateutil installs `dateutil`, this installs
 # `sourced`.
 name = "sourced-evidence"
-version = "0.3.0"
+version = "0.4.0"
 description = "Per-claim grounded/contradicted/unverified checking of LLM output against its own source context -- never a blended trust score."
 requires-python = ">=3.10"
 readme = "README.md"

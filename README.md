@@ -94,6 +94,60 @@ Now: the first is `contradicted` (the passage says 1982 and 1985), the
 other two `unverified`, and the three true sentences in the same summary
 stay `grounded`.
 
+## Measured on RAGTruth
+
+[RAGTruth](https://github.com/ParticleMedia/RAGTruth) labels real answers
+from GPT-4, GPT-3.5, Llama-2 and Mistral span by span for hallucination.
+`bench/ragtruth.py` scores sourced on its 2,700-answer test split, one
+sentence at a time (a sentence is hallucinated when a labelled span
+overlaps it). String matching only, no `--judge`:
+
+| task | sentences | hallucinated | `grounded` | of which hallucinated | `contradicted` | precision |
+|---|---|---|---|---|---|---|
+| summarization | 5,083 | 263 | 1,540 | 2.1% | 23 | 17% |
+| QA | 6,942 | 469 | 1,146 | 1.6% | 9 | 22% |
+| data-to-text | 8,236 | 936 | 393 | 2.8% | 23 | 61% |
+| **all** | **20,261** | **1,668 (8.2%)** | **3,079** | **2.0%** | **55** | **36%** |
+
+How to read it:
+
+- **`grounded` is the signal to rely on.** 2.0% of grounded sentences
+  were hallucinated, against an 8.2% base rate, and 96% of all hallucinated
+  sentences were *not* called grounded.
+- **`contradicted` is a lead, not a verdict.** 36% precision overall
+  (4.4x the base rate), 61% on structured data, under 25% on free prose,
+  where a different number near the same names is often a different fact.
+- **Most sentences come back `unverified`** -- by design, but it is
+  what `--judge` is for.
+
+The first run found the false-contradiction classes that are fixed now,
+each in real output: a preamble line ("Here's the summary within 66
+words:") read as part of the first claim; list numbering and `(Passage 1)`
+citations read as figures; a capitalized first word ("To", "Rinse")
+anchoring a contradiction; `$1.6b` not matching "1.6 billion"; and a number
+stated in another passage about the same subject. Contradiction precision
+went from 14% to 36% and false-grounded from 2.9% to 2.0%. One tried fix
+was reverted: ignoring clock times removed false contradictions but let
+wrong opening hours read as grounded.
+
+## In code, and in bulk
+
+```python
+from sourced import check, assert_grounded
+
+report = check(answer, [doc1, doc2])
+assert_grounded(answer, [doc1, doc2])                          # contradictions fail
+assert_grounded(answer, [doc1, doc2], allow_unverified=False)  # so does anything unconfirmed
+```
+
+```
+$ sourced batch results.jsonl          # one {"output", "sources"} per line
+2 record(s): 1 grounded, 1 contradicted, 0 unverified claims; 1 record(s) with a contradiction
+```
+
+`--json` prints one result per record. A malformed line is reported and
+counted, never skipped silently, and it fails the run.
+
 ## `--judge`: let Claude decide what string matching can't
 
 ```

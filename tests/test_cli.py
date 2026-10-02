@@ -50,6 +50,19 @@ class TestCli(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("1 contradicted", buf.getvalue())
 
+    def test_batch_counts_every_record_and_reports_bad_lines(self):
+        src = "Microsoft reported revenue of $56 billion for the quarter."
+        lines = [json.dumps({"id": "a", "output": "Microsoft reported revenue of $56 billion.", "sources": [src]}),
+                 json.dumps({"id": "b", "output": "Microsoft reported revenue of $70 billion.", "source": src}),
+                 "not json"]
+        path = self._write("batch.jsonl", "\n".join(lines) + "\n")
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = main(["batch", path])
+        self.assertEqual(code, 1)
+        self.assertIn("2 record(s): 1 grounded, 1 contradicted", out.getvalue())
+        self.assertIn("line 3 skipped", err.getvalue())
+
     def test_multiple_source_files_are_concatenated(self):
         output = self._write("output.txt", "Microsoft reported revenue of $56 billion.")
         s1 = self._write("s1.txt", "Some unrelated background.")
