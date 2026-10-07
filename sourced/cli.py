@@ -49,7 +49,14 @@ def main(argv: list[str] | None = None) -> int:
     check_p.add_argument("--judge-model", default=DEFAULT_MODEL,
                          help=f"the model for --judge (default: {DEFAULT_MODEL})")
 
+    batch_p = sub.add_parser(
+        "batch", help="check many outputs: a JSONL file of {\"output\", \"sources\"} records")
+    batch_p.add_argument("jsonl")
+    batch_p.add_argument("--json", action="store_true", help="print one result per record, as JSONL")
+
     args = parser.parse_args(argv)
+    if args.command == "batch":
+        return _batch(args)
 
     output_text = _read(args.output_file)
     source_text = "\n".join(_read(f) for f in args.source_files)
@@ -75,6 +82,37 @@ def main(argv: list[str] | None = None) -> int:
     # can't tell," not a failure -- only a contradiction (a claim actively
     # at odds with its own source) is a nonzero exit.
     return 1 if report["counts"]["contradicted"] > 0 else 0
+
+
+def _batch(args) -> int:
+    """Each line: {"id"?, "output": str, "sources": [str] | "source": str}.
+    A malformed line is reported and counted, never skipped silently."""
+    totals = {"grounded": 0, "contradicted": 0, "unverified": 0}
+    records = bad = flagged = 0
+    with open(args.jsonl, encoding="utf-8") as fh:
+        for number, line in enumerate(fh, 1):
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+                sources = row.get("sources", row.get("source"))
+                sources = [sources] if isinstance(sources, str) else list(sources)
+                report = check_output(row["output"], "\n".join(sources))
+            except (ValueError, KeyError, TypeError) as exc:
+                bad += 1
+                print(f"sourced: line {number} skipped: {type(exc).__name__}: {exc}", file=sys.stderr)
+                continue
+            records += 1
+            flagged += report["counts"]["contradicted"] > 0
+            for k, v in report["counts"].items():
+                totals[k] += v
+            if args.json:
+                print(json.dumps({"id": row.get("id", number), **report}))
+    if not args.json:
+        print(f"{records} record(s): {totals['grounded']} grounded, {totals['contradicted']} "
+              f"contradicted, {totals['unverified']} unverified claims; {flagged} record(s) "
+              f"with a contradiction" + (f"; {bad} malformed line(s)" if bad else ""))
+    return 1 if flagged or bad else 0
 
 
 if __name__ == "__main__":
