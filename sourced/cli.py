@@ -14,10 +14,8 @@ _TAG = {"grounded": "OK", "contradicted": "XX", "unverified": "??"}
 
 def _read(path: str) -> str:
     """A missing file, a directory given by mistake, or binary/undecodable
-    content is a wrong argument, not a crash -- every sibling tool in this
-    portfolio treats a bad file path as an actionable error message, not a
-    traceback (found by testing this against an actual typo'd path, the
-    same way providence's malformed-JSON crash was found)."""
+    content is a wrong argument, not a crash: a bad file path gets an
+    actionable error message, not a traceback."""
     p = pathlib.Path(path)
     # Checked up front: on Windows, reading a directory raises
     # PermissionError, not IsADirectoryError, so the except below never

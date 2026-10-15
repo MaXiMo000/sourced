@@ -45,7 +45,7 @@ class TestSplitClaims(unittest.TestCase):
         self.assertEqual(len(split_claims(text)), 2)
 
     def test_a_period_inside_a_closing_quote_still_splits(self):
-        """Real bug, found live: American-style punctuation puts the period
+        """American-style punctuation puts the period
         *inside* the quote ("four hours." not "four hours".), so the
         character right before the split point is the quote mark, not
         [.!?] -- the original lookbehind only ever checked for [.!?]

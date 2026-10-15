@@ -17,7 +17,7 @@ import re
 # Split on sentence-ending punctuation followed by whitespace and what looks
 # like the start of a new sentence (a capital letter, a digit, or a quote).
 # Deliberately a regex, not a real sentence tokenizer (spaCy/nltk): this
-# portfolio stays dependency-free where a regex handles ordinary prose well
+# package stays dependency-free where a regex handles ordinary prose well
 # enough. It will over-split or under-split on abbreviations ("Dr. Smith
 # arrived.") and decimal numbers at a sentence boundary -- a stated
 # limitation, not a silent one; see README.

@@ -1,9 +1,12 @@
 # sourced
 
 [![ci](https://github.com/MaXiMo000/sourced/actions/workflows/ci.yml/badge.svg)](https://github.com/MaXiMo000/sourced/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/sourced-evidence)](https://pypi.org/project/sourced-evidence/)
 
 **Checks an LLM's output against its own source context, claim by claim --
 `grounded`, `contradicted`, or `unverified`, never one blended trust score.**
+
+<p align="center"><img src="https://raw.githubusercontent.com/MaXiMo000/sourced/main/docs/demo.svg" alt="sourced marking two claims grounded, one contradicted by the source's 8%, and one unverified" width="100%"></p>
 
 A RAG pipeline retrieves the right documents and still generates a sentence
 those documents don't support -- a wrong number, an entity the source never
@@ -35,8 +38,8 @@ does NOT do.")
 pip install sourced-evidence   # the command it installs is `sourced`
 ```
 
-(`sourced` was already taken on PyPI -- same story as `receipt-evidence`,
-`providence-evidence`, and `custody-evidence` in this portfolio.)
+(`sourced` was already taken on PyPI, so the package is `sourced-evidence`; the command
+is still `sourced`.)
 
 ## Use
 
@@ -230,8 +233,8 @@ input) caught it -- e.g. a number regex that swallowed a following
 sentence period (`"42."` parsed as the number `42.`), a sentence-
 initial entity ("Microsoft" opening a sentence) needing case-insensitive
 matching against a source that uses the same word lowercase mid-sentence,
-without that leniency being used for anything else, and (found live
-during a later audit) American-style closing punctuation putting the
+without that leniency being used for anything else, and American-style
+closing punctuation putting the
 period *inside* a quote (`"four hours."` not `"four hours".`) silently
 merging two sentences into one claim -- the sentence-end regex only ever
 checked for `[.!?]` immediately before the split point, never a quote
