@@ -7,7 +7,7 @@
 """
 from __future__ import annotations
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 # Loaded before `check` below is defined: importing the `sourced.check`
 # submodule later would rebind the package's `check` to the module.
