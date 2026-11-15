@@ -60,7 +60,7 @@ def main(folder: str, split: str = "test") -> None:
                 continue
             info = sources[row["source_id"]]
             text = source_text(info["source_info"])
-            spans = [(l["start"], l["end"]) for l in row["labels"]]
+            spans = [(lab["start"], lab["end"]) for lab in row["labels"]]
             for claim, start, end in sentences(row["response"]):
                 bad = any(s < end and e > start for s, e in spans)
                 verdict = check_claim(claim, text)["status"]
