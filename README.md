@@ -32,6 +32,26 @@ was 8%; note the second claim repeats "Microsoft" by name rather than
 saying "it," because pronoun coreference isn't resolved -- see "What this
 does NOT do.")
 
+**How far to trust it**, measured on the 20,261 sentences of
+[RAGTruth](https://github.com/ParticleMedia/RAGTruth)'s test split, with no
+LLM involved (details in "Measured on RAGTruth" below):
+
+- `grounded` is the signal to rely on: 2.0% of grounded sentences were
+  hallucinated, against an 8.2% base rate.
+- `contradicted` is a lead, not a verdict: 36% precision, 61% on
+  structured data.
+- Most sentences come back `unverified`; `--judge` is for those.
+
+**In your tests**, no plugin needed:
+
+```python
+from sourced import assert_grounded
+
+def test_answer_is_grounded():
+    answer = rag_pipeline("How did Microsoft do last quarter?")
+    assert_grounded(answer, retrieved_docs)   # fails, naming each contradicted claim
+```
+
 ## Install
 
 ```
